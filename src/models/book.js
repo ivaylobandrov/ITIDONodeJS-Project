@@ -12,6 +12,11 @@ const Book = mongoose.model('Book', {
     rating: {
         type: Number,
         required: false
+    },
+    created_by: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true,
+        ref: 'User'
     }
 })
 

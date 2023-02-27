@@ -2,6 +2,7 @@ const mongoose = require('mongoose')
 const validator = require('validator')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
+const Book = require('./book')
 
 const userSchema = new mongoose.Schema({
     name: {
@@ -38,6 +39,12 @@ const userSchema = new mongoose.Schema({
             required: true
         }
     }]
+})
+
+userSchema.virtual('books', {
+    ref: 'Book',
+    localField: '_id',
+    foreignField: 'created_by'
 })
 
 userSchema.methods.toJSON = function () {
@@ -85,6 +92,13 @@ userSchema.pre('save', async function (next) {
     }
 
     next() // if next() is not implemented it will hang on forever
+})
+
+// Delete user books when user is removed
+userSchema.pre('remove', async function () {
+    const user = this
+    await Book.deleteMany({created_by: user._id})
+    next()
 })
 
 const User = mongoose.model('User', userSchema)
