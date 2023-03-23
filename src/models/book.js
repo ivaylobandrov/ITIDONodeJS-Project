@@ -17,6 +17,9 @@ const Book = mongoose.model('Book', {
         type: mongoose.Schema.Types.ObjectId,
         required: true,
         ref: 'User'
+    },
+    cover: {
+        type: Buffer
     }
 })
 
