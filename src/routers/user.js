@@ -3,11 +3,11 @@ const router = new express.Router()
 const User = require('../models/user')
 const auth = require('../middleware/auth')
 
-router.post('/users', async (req, res) => { // async function always return a promise
+router.post('/users', async (req, res) => {
     const user = new User(req.body)
 
     try {
-        await user.save() // the following lines will be executed only if the save is successful
+        await user.save()
         const token = await user.generateAuthToken()
         res.status(201).send({user, token})
     } catch (e) {

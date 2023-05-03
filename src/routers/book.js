@@ -149,11 +149,15 @@ router.delete('/books/delete/:id', auth, async (req, res) => {
 
 router.post('/books/vote/:id', auth, async (req, res) => {
     _id = req.params.id
-    vote = req.body.vote
+    vote = Number(req.body.vote)
 
     try {
-        const book = await Book.findOne({_id: req.params.id})
-        book.rating = (book.rating + vote);
+        const book = await Book.findOne({_id})
+        if (vote > 10 || vote < 1) {
+            return res.status(400).send({error: 'Please enter a number between 1 and 10'})
+        }
+
+        book.rating = (book.rating + vote) / 2
         book.save()
         if (!book) {
             res.status(404).send({error: 'Book not found'})

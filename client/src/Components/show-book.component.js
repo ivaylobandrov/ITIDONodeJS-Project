@@ -54,11 +54,11 @@ const ShowBook = () => {
                 alert('Successfully voted!');
                 window.location.reload(true);
 
-            } else {
-                Promise.reject()
             }
           })
-          .catch(err => alert('Something went wrong'))
+          .catch((error) => {
+            alert(error.response.data.error)
+        });
       }
     const roundedRating = String(Math.round(data.rating * 100) / 100)
     const isLoggedIn = localStorage.getItem('token')
@@ -83,8 +83,6 @@ const ShowBook = () => {
                 alert('Successfully deleted!');
                 nav("/")
 
-            } else {
-                Promise.reject()
             }
           })
           .catch(err => alert('Something went wrong'))
