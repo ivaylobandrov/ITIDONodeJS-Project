@@ -4,9 +4,9 @@ const Book = require('../models/book')
 const auth = require('../middleware/auth')
 const multer = require('multer')
 const sharp = require('sharp')
-const { findById } = require('../models/book')
+const e = require('express')
 
-router.post('/books', auth, async (req, res) => {
+router.post('/books/create-book', auth, async (req, res) => {
     const book = new Book({
         ...req.body,
         created_by: req.user._id
@@ -14,49 +14,101 @@ router.post('/books', auth, async (req, res) => {
     
     try {
         await book.save()
-        res.status(201).send(book)
+        return res.status(201).send(book)
     } catch (e) {
-        res.status(400).send(e)
+        return res.status(400).send(e)
     }
 })
 
-router.get('/books', auth, async (req, res) => {
-    const { name, page = 1, limit = 3 } = req.query
-    const filter = {}
-    if (name) {
-        filter.name = name
+router.get('/books', async (req, res) => {
+    const page = req.query.page || 1
+    const ITEMS_PER_PAGE = 6;
+
+    let query = {}
+    if (req.query.name) {
+        query.name = req.query.name;
+    } else {
+        query.name = ""
     }
     
     try {
-        const books = await Book.find(filter)
-            .limit(limit * 1)
-            .skip((page - 1) * limit)
-        const count = await Book.countDocuments()
-        res.status(200).send({books, totalPages: Math.ceil(count / limit), currentPage: page})
+        const skip = (page - 1) * ITEMS_PER_PAGE;
+        const countPromise = Book.countDocuments({ "name": { "$regex": query.name, "$options": "i" } });
+
+        const booksPromise = Book.find({ "name": { "$regex": query.name, "$options": "i" } })
+        .limit(ITEMS_PER_PAGE)
+        .skip(skip);
+
+        const [count, books] = await Promise.all([countPromise, booksPromise])
+        const pageCount = count / ITEMS_PER_PAGE;
+        const data = {
+            pagination: {
+                count,
+                pageCount: Math.ceil(pageCount)
+            },
+            books
+        }
+
+        res.status(200).send(data)
 
     } catch (e) {
         res.status(500).send(e)   
     }
 })
 
-router.get('/books/:id', auth, async (req, res) => {
-    _id = req.params.id
+router.get('/books/user', auth, async (req, res) => {
+    const page = req.query.page || 1
+    const ITEMS_PER_PAGE = 6;
+
+    let query = {}
+    if (req.query.name) {
+        query.name = req.query.name;
+    } else {
+        query.name = ""
+    }
+    
+    try {
+        const skip = (page - 1) * ITEMS_PER_PAGE;
+        const countPromise = Book.countDocuments({created_by: req.user._id, "name": { "$regex": query.name, "$options": "i" }});
+        const booksPromise = Book.find({created_by: req.user._id, "name": { "$regex": query.name, "$options": "i" }})
+        .limit(ITEMS_PER_PAGE)
+        .skip(skip);
+
+        const [count, books] = await Promise.all([countPromise, booksPromise])
+        const pageCount = count / ITEMS_PER_PAGE;
+        const data = {
+            pagination: {
+                count,
+                pageCount: Math.ceil(pageCount)
+            },
+            books
+        }
+
+        res.status(200).send(data)
+
+    } catch (e) {
+        res.status(500).send(e)   
+    }
+})
+
+router.get('/books/:id', async (req, res) => {
+    const _id = req.params.id
 
     try {
-        const book = await Book.findOne({_id, created_by: req.user._id})
+        const book = await Book.findOne({_id})
 
         if (!book) {
-            res.status(404).send()
+            return res.status(404).send()
         }
-        res.status(200).send(book)
+        return res.status(200).send(book)
     } catch (e) {
         res.status(500).send(e)
     }
 })
 
-router.patch('/books/:id', auth, async (req, res) => {
+router.patch('/books/edit-book/:id', auth, async (req, res) => {
     const updates = Object.keys(req.body)
-    const allowedUpdates = ['name', 'description', 'rating']
+    const allowedUpdates = ['name', 'description']
     const isValidOperation = updates.every((update) => allowedUpdates.includes(update))
 
     if (!isValidOperation) {
@@ -80,7 +132,7 @@ router.patch('/books/:id', auth, async (req, res) => {
     }
 })
 
-router.delete('/books/:id', auth, async (req, res) => {
+router.delete('/books/delete/:id', auth, async (req, res) => {
     _id = req.params.id
 
     try {
@@ -95,7 +147,25 @@ router.delete('/books/:id', auth, async (req, res) => {
     }
 })
 
-const cover = multer({
+router.post('/books/vote/:id', auth, async (req, res) => {
+    _id = req.params.id
+    vote = req.body.vote
+
+    try {
+        const book = await Book.findOne({_id: req.params.id})
+        book.rating = (book.rating + vote);
+        book.save()
+        if (!book) {
+            res.status(404).send({error: 'Book not found'})
+        }
+        res.status(200).send()
+    }
+    catch (e) {
+        res.status(400).send(e)
+    }
+})
+
+const upload = multer({
     limits: {
         fileSize: 10000000
     },
@@ -103,20 +173,21 @@ const cover = multer({
         if (!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
             return cb(new Error('Please upload an image'))
         }
+
         cb(undefined, true)
     }
 })
 
-router.post('/books/:id/cover', auth, cover.single('cover'), async (req, res) => {
+router.post('/books/:id/cover', auth, upload.single('file'), async (req, res) => {
     const buffer = await sharp(req.file.buffer).resize({width: 250, height: 250}).png().toBuffer()
     const _id = req.params.id
 
-    const book = await Book.findOne({_id, created_by: req.user._id})
+    const book = await Book.findById({_id})
     book.cover = buffer
     await book.save()
     res.send()
 }, (error, req, res, next) => {
-    res.status(400).send({error: error.message})
+    res.status(400).send({ error: error.message })
 })
 
 router.get('/books/:id/cover', async (req, res) => {

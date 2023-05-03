@@ -1,23 +1,38 @@
 {
   "dependencies": {
     "bcrypt": "^5.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
     "express": "^4.18.2",
+    "jest": "^29.5.0",
     "jsonwebtoken": "^9.0.0",
+    "jw-paginate": "^1.0.4",
     "mongodb": "^5.0.1",
     "mongoose": "^6.9.1",
     "multer": "^1.4.5-lts.1",
     "nodemon": "^2.0.20",
     "sharp": "^0.31.3",
+    "supertest": "^6.3.3",
     "validator": "^13.9.0"
   },
   "name": "itidonodejsproject",
   "version": "1.0.0",
   "main": "app.js",
+  "jest": {
+    "testEnvironment": "node",
+    "modulePathIgnorePatterns": [
+      "client"
+    ]
+  },
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "nodemon src/index.js"
+    "start": "env-cmd -f ./config/dev.env node src/index.js",
+    "dev": "env-cmd -f ./config/dev.env nodemon src/index.js",
+    "test": "env-cmd -f ./config/test.env jest --watch"
   },
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "",
+  "devDependencies": {
+    "env-cmd": "^10.1.0"
+  }
 }

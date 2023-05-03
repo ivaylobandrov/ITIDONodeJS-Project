@@ -3,7 +3,8 @@ const mongoose = require('mongoose')
 const Book = mongoose.model('Book', {
     name: {
         type: String,
-        required: true
+        required: true,
+        unique: true
     },
     description: {
         type: String,
@@ -11,7 +12,8 @@ const Book = mongoose.model('Book', {
     },
     rating: {
         type: Number,
-        required: false
+        required: false,
+        default: 5
     },
     created_by: {
         type: mongoose.Schema.Types.ObjectId,
